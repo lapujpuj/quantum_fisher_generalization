@@ -21,15 +21,23 @@ tobias.haug@u.nus.edu
 
 import numpy as np
 
+import qutip as qt
+import scipy
+import scipy.io
+import operator
+
+import matplotlib.pyplot as plt
+from functools import reduce
+
 
 ##parameters of program
 
-n_qubits=3 ##number of qubits
-depth=12 ##depth of quantum circuit
+n_qubits=5 ##number of qubits
+depth=30 ##depth of quantum circuit
 
 n_test=100 ##number test states sampled from distribution
-maxiter_opt=300#-1#100000, set to zero to only compute gradients, -1: do nothing
-model=0##0: hardware efficient circuit, 1: XY ansatz
+maxiter_opt=300 #-1#100000, set to zero to only compute gradients, -1: do nothing
+model=0 ##0: hardware efficient circuit, 1: XY ansatz
 type_state=1#input states for training, 0: haar random, 1: product states 2: 1 particle states
 type_state_test=type_state ##input states for test, 0: haar random, 1: product states 2: 1 particle states
 n_particles=1 ##for type_state==2
@@ -40,40 +48,32 @@ fix_depth=20 ##add unitary of fixed depth at end of circuit to make more random
 
 
 ##go through different number of training states to
-if(model==0):
-    n_training_list=np.unique(np.array(np.round(10**np.linspace(0,np.log10(2*2**n_qubits),num=11)),dtype=int))
-if(model==1):
-    n_training_list=[1,2,3,5,8]
+# if(model==0):
+#     n_training_list=np.unique(np.array(np.round(10**np.linspace(0,np.log10(2*2**n_qubits),num=11)),dtype=int))
+# if(model==1):
+#     n_training_list=[1,2,3,5,8]
 
-
+n_training_list=np.unique(np.array(np.round(10**np.linspace(0,np.log10(2*2**n_qubits),num=11)),dtype=int))
+n_training_list=[1,2,3,5,8]
+print("Number training states",n_training_list)
+                          
 
 rng = np.random.default_rng()
 datapoints=len(n_training_list)
 
 
-import qutip as qt
-import scipy
-import scipy.io
-import operator
-
-import matplotlib.pyplot as plt
-from functools import reduce
-
 
 def prod(factors):
     return reduce(operator.mul, factors, 1)
 
-
 def flatten(l):
     return [item for sublist in l for item in sublist]
-
 
 #tensors operators together 
 def genFockOp(op,position,size,levels=2,opdim=0):
     opList=[qt.qeye(levels) for x in range(size-opdim)]
     opList[position]=op
     return qt.tensor(opList)
-
 
 
 def get_unitary(n_qubits,depth,circuit_params,add_fixed_unitary,ini_state=[],model=0,opEntangler=[]):
@@ -584,7 +584,8 @@ for p in range(datapoints):
     options={"maxiter":maxiter_opt}
     
     ##random initial parameters
-    x0=rng.random(n_circuit_parameters)*2*np.pi
+    # x0=rng.random(n_circuit_parameters)*2*np.pi
+    x0=np.zeros(n_circuit_parameters)
     
     ##training and test error during training is stored here
     ##is filled in by callback_opt, which is called during optimisation
@@ -621,6 +622,8 @@ for p in range(datapoints):
     cost_train_final_list.append(cost_train_final)
     cost_test_final_list.append(cost_test_final)
 
+    # if (p in [0, training_states_target[-1]]):
+    ##plot training and test cost during training
     iterations_range=np.arange(len(cost_training_list))
     plt.plot(iterations_range,cost_training_list,label="C train")
     plt.plot(iterations_range,cost_test_list,label="C test")
